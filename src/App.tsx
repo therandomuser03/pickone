@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import './App.css'
 
-import { Plus, X, Shuffle, Sparkles } from 'lucide-react';
+import { Plus, Shuffle, Sparkles, Trash2, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './components/ui/card';
+import { cn } from './lib/utils';
+import { GridPattern } from './components/ui/grid-pattern';
+import confetti from 'canvas-confetti';
 
 function App() {
-  const [options, setOptions] = useState(['']);
+  const [options, setOptions] = useState(['', '']);
   const [result, setResult] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -14,7 +20,7 @@ function App() {
   };
 
   const removeOption = (index: number) => {
-    if (options.length > 1) {
+    if (options.length > 2) {
       setOptions(options.filter((_, i) => i !== index));
     }
   };
@@ -25,182 +31,247 @@ function App() {
     setOptions(newOptions);
   };
 
-  const pickOne = () => {
+  const pickOne = async () => {
     const validOptions = options.filter(option => option.trim() !== '');
-    
+
     if (validOptions.length < 2) {
-      alert('Please add at least 2 valid options!');
+      // Could add toast here
       return;
     }
 
     setIsAnimating(true);
-    
-    // Simulate spinning animation
-    let counter = 0;
-    const maxCounter = 20;
+    setResult('');
+
+    // Simulate complex shuffling animation
+    const totalDuration = 2000;
+    const intervalTime = 100;
+    let elapsed = 0;
+
     const interval = setInterval(() => {
-      const randomOption = validOptions[Math.floor(Math.random() * validOptions.length)];
-      setResult(randomOption);
-      counter++;
-      
-      if (counter >= maxCounter) {
+      const randomIndex = Math.floor(Math.random() * validOptions.length);
+      setResult(validOptions[randomIndex]);
+      elapsed += intervalTime;
+
+      if (elapsed >= totalDuration) {
         clearInterval(interval);
-        setIsAnimating(false);
+        finalizePick(validOptions);
       }
-    }, 100);
+    }, intervalTime);
+  };
+
+  const finalizePick = (validOptions: string[]) => {
+    let finalIndex = 0;
+
+    // Robust Randomness Logic
+    if (window.crypto && window.crypto.getRandomValues) {
+      // Application-grade randomness using Crypto API
+      const randomBuffer = new Uint32Array(1);
+      window.crypto.getRandomValues(randomBuffer);
+      const randomNumber = randomBuffer[0] / (0xffffffff + 1);
+      finalIndex = Math.floor(randomNumber * validOptions.length);
+    } else {
+      // Fallback for non-secure contexts
+      finalIndex = Math.floor(Math.random() * validOptions.length);
+    }
+
+    setResult(validOptions[finalIndex]);
+    setIsAnimating(false);
+    triggerConfetti();
+  };
+
+  const triggerConfetti = () => {
+    const duration = 3 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 50 };
+
+    const random = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval: ReturnType<typeof setInterval> = setInterval(function () {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({ ...defaults, particleCount, origin: { x: random(0.1, 0.3), y: random(0.3, 0.5) } }); // Left
+      confetti({ ...defaults, particleCount, origin: { x: random(0.7, 0.9), y: random(0.3, 0.5) } }); // Right
+    }, 250);
   };
 
   const reset = () => {
     setResult('');
-    setOptions(['']);
+    setOptions(['', '']);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 bg-background text-foreground overflow-hidden relative font-sans">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <GridPattern
+          width={40}
+          height={40}
+          className="opacity-[0.03] text-primary"
+          strokeDasharray="4 2"
+        />
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-secondary/10 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="max-w-md w-full z-10 space-y-8 relative">
         {/* Header */}
-        <motion.div 
-          className="text-center mb-8 pt-8"
-          initial={{ opacity: 0, y: -50 }}
+        <motion.div
+          className="text-center space-y-2"
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <motion.h1 
-            className="text-5xl font-bold text-white mb-2 flex items-center justify-center gap-3"
-            initial={{ scale: 0.5 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 200 }}
+          <motion.div
+            className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-4 ring-1 ring-primary/20 shadow-lg shadow-primary/10"
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            >
-              <Sparkles className="text-yellow-400" />
-            </motion.div>
+            <Sparkles className="w-8 h-8 text-primary" />
+          </motion.div>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight lg:text-6xl bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent drop-shadow-sm">
             PickOne
-            <motion.div
-              animate={{ rotate: [0, -10, 10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, delay: 0.5 }}
-            >
-              <Sparkles className="text-yellow-400" />
-            </motion.div>
-          </motion.h1>
-          <motion.p 
-            className="text-purple-200 text-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-          >
-            Can't decide? Let us pick for you!
-          </motion.p>
+          </h1>
+          <p className="text-muted-foreground text-lg font-medium">
+            Decisions made simple.
+          </p>
         </motion.div>
 
-        {/* Options Input */}
-        <motion.div 
-          className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20"
-          initial={{ opacity: 0, x: -100 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <h2 className="text-2xl font-semibold text-white mb-4">Add Your Options</h2>
-          
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {options.map((option, index) => (
-                <motion.div 
-                  key={index} 
-                  className="flex gap-3"
-                  initial={{ opacity: 0, height: 0, y: -20 }}
-                  animate={{ opacity: 1, height: "auto", y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  layout
-                >
-                  <div className="flex-1">
-                    <motion.input
-                      type="text"
+        {/* Main Card */}
+        <Card className="border-primary/10 bg-card/60 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+          {/* Shine effect */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-secondary/5 opacity-50 pointer-events-none" />
+
+          <CardHeader>
+            <CardTitle>Options</CardTitle>
+            <CardDescription>Enter your choices below.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 relative z-10">
+            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {options.map((option, index) => (
+                  <motion.div
+                    key={index}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                    className="flex gap-2 group"
+                  >
+                    <Input
+                      placeholder={`Option ${index + 1}`}
                       value={option}
                       onChange={(e) => updateOption(index, e.target.value)}
-                      placeholder={`Option ${index + 1}`}
-                      className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
-                      whileFocus={{ scale: 1.02 }}
-                      transition={{ duration: 0.2 }}
+                      className="bg-background/50 focus:bg-background transition-all"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') addOption();
+                      }}
                     />
-                  </div>
-                  {options.length > 1 && (
-                    <motion.button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => removeOption(index)}
-                      className="px-3 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-400/50 rounded-lg text-red-300 hover:text-red-200 transition-all"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      disabled={options.length <= 2}
+                      className={cn(
+                        "opacity-0 group-hover:opacity-100 transition-opacity",
+                        options.length <= 2 && "cursor-not-allowed opacity-50"
+                      )}
                     >
-                      <X size={20} />
-                    </motion.button>
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          <motion.button
-            onClick={addOption}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-400/50 rounded-lg text-green-300 hover:text-green-200 transition-all font-medium"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Plus size={20} />
-            Add Another Option
-          </motion.button>
-        </motion.div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={pickOne}
-            disabled={isAnimating}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-600 rounded-xl text-white font-bold text-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-          >
-            <Shuffle size={24} />
-            {isAnimating ? 'Picking...' : 'Pick One!'}
-          </button>
-          
-          {result && (
-            <button
-              onClick={reset}
-              className="px-6 py-4 bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl text-white font-medium transition-all"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-
-        {/* Result Display */}
-        {result && (
-          <div className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 backdrop-blur-lg rounded-2xl p-8 border border-yellow-400/30 text-center">
-            <h3 className="text-2xl font-semibold text-white mb-4">
-              🎉 The winner is...
-            </h3>
-            <div className={`text-4xl font-bold text-yellow-300 transition-all duration-200 ${isAnimating ? 'scale-110' : 'scale-100'}`}>
-              {result}
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
-            {!isAnimating && (
-              <p className="text-white/80 mt-4">
-                There you have it! Sometimes the best decisions come from letting chance decide.
-              </p>
-            )}
-          </div>
-        )}
 
-        {/* Footer */}
-        <div className="text-center mt-8 text-white/60">
-          <p>Perfect for choosing restaurants, movies, activities, and more!</p>
-        </div>
+            <Button
+              variant="outline"
+              className="w-full border-dashed border-2 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all"
+              onClick={addOption}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add Option
+            </Button>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4 relative z-10">
+            <Button
+              size="lg"
+              className={cn(
+                "w-full text-lg font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow",
+                isAnimating && "animate-pulse"
+              )}
+              onClick={pickOne}
+              disabled={isAnimating || options.filter(o => o.trim()).length < 2}
+            >
+              {isAnimating ? (
+                <Shuffle className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-5 h-5 mr-2" />
+              )}
+              {isAnimating ? "Choosing..." : "Pick For Me"}
+            </Button>
+
+            {result && !isAnimating && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Button variant="ghost" size="sm" onClick={reset} className="w-full text-muted-foreground hover:text-foreground">
+                  Reset & Start Over
+                </Button>
+              </motion.div>
+            )}
+          </CardFooter>
+        </Card>
+
+        {/* Result Overlay / Display */}
+        <AnimatePresence>
+          {result && !isAnimating && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+              onClick={() => { }}
+            >
+              <motion.div
+                className="bg-card border border-primary/20 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
+                layoutId="result-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
+
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                  className="mx-auto w-24 h-24 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center mb-6 text-white shadow-xl shadow-primary/30"
+                >
+                  <Award className="w-12 h-12" />
+                </motion.div>
+
+                <h2 className="text-sm font-bold text-primary uppercase tracking-wider mb-2">The Winner Is</h2>
+                <h3 className="text-5xl font-extrabold text-foreground mb-8 break-words leading-tight">{result}</h3>
+
+                <div className="grid gap-3">
+                  <Button size="lg" onClick={pickOne} className="w-full font-bold">
+                    <Shuffle className="w-4 h-4 mr-2" /> Pick Again
+                  </Button>
+                  <Button variant="outline" onClick={() => setResult('')}>
+                    Back to Edit
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </div>
   );
 }
-
 export default App;
